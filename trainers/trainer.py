@@ -41,7 +41,7 @@ class Trainer:
         pbar = tqdm(self.train_loader, desc=f"Epoch {epoch}")
         for batch in pbar:
             images, masks = batch
-            images, masks = images.to(self.device), masks.to(self.device)
+            images, masks = images.to(self.device, non_blocking=True), masks.to(self.device, non_blocking=True)
 
             self.optimizer.zero_grad()
             preds = self.model(images)
@@ -69,7 +69,7 @@ class Trainer:
         with torch.no_grad():
             for batch in self.val_loader:
                 images, masks = batch
-                images, masks = images.to(self.device), masks.to(self.device)
+                images, masks = images.to(self.device, non_blocking=True), masks.to(self.device, non_blocking=True)
 
                 preds = self.model(images)
                 loss = self.criterion(preds, masks)

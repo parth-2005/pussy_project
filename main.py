@@ -35,6 +35,8 @@ def main():
     config = get_config()
     device = _require_cuda_device()
     print(f"Using device: {device}")
+    pin_memory = device.type == "cuda"
+    persistent_workers = config.num_workers > 0
 
     # 1. Dataset Preparation
     # Note: In a real scenario, the data_root should contain the UPENN-GBM folders
@@ -50,8 +52,22 @@ def main():
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
-    train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=config.batch_size, shuffle=False)
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=config.batch_size,
+        shuffle=True,
+        num_workers=config.num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=persistent_workers,
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=config.batch_size,
+        shuffle=False,
+        num_workers=config.num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=persistent_workers,
+    )
 
     # 2. Model Creation
     model = ModelFactory.create(

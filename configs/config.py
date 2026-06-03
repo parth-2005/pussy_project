@@ -24,9 +24,10 @@ class Config:
     # --- Training Parameters ---
     batch_size: int = 16
     learning_rate: float = 1e-4
-    epochs: int = 50
+    epochs: int = 10
     optimizer: str = "adam"
     weight_decay: float = 1e-5
+    num_workers: int = 4
 
     # --- Training Pipeline ---
     checkpoint_dir: str = "checkpoints"
