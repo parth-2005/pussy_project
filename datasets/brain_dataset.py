@@ -28,6 +28,19 @@ class BrainMRIDataset(Dataset):
         self.patient_dirs = sorted([d for d in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, d))])
         self.slices = self._prepare_slices()
 
+        if not self.patient_dirs:
+            raise RuntimeError(f"No patient directories found in dataset root: {root_dir}")
+
+        if not self.slices:
+            preview_dirs = ", ".join(self.patient_dirs[:5])
+            raise RuntimeError(
+                "No usable training slices were found. "
+                "The dataset loader expects each patient folder to contain a mask file ending in .nii.gz "
+                "with a name matching one of: mask, seg, segmentation. "
+                f"Root: {root_dir}. "
+                f"Patient folders found: {len(self.patient_dirs)} ({preview_dirs})."
+            )
+
     def _detect_modality_file(self, patient_dir: str, modality: str) -> Optional[str]:
         """
         Tries to find the file matching the modality name in the patient directory.
