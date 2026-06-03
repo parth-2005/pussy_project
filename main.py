@@ -8,10 +8,32 @@ from losses.dice_bce_loss import DiceBCELoss
 from trainers.trainer import Trainer
 import os
 
+
+def _require_cuda_device() -> torch.device:
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA is required for this project, but torch.cuda.is_available() is False. "
+            "Run this on a machine with a working NVIDIA GPU and CUDA-enabled PyTorch."
+        )
+
+    device = torch.device("cuda")
+    print("CUDA test passed")
+    print(f"  torch.cuda.is_available(): {torch.cuda.is_available()}")
+    print(f"  torch.cuda.device_count(): {torch.cuda.device_count()}")
+    print(f"  selected device: {device}")
+    print(f"  current device index: {torch.cuda.current_device()}")
+    print(f"  device name: {torch.cuda.get_device_name(device)}")
+
+    smoke_tensor = torch.empty(1, device=device)
+    print(f"  smoke test tensor device: {smoke_tensor.device}")
+
+    return device
+
+
 def main():
     # Load Configuration
     config = get_config()
-    device = torch.device(config.device if torch.cuda.is_available() else "cpu")
+    device = _require_cuda_device()
     print(f"Using device: {device}")
 
     # 1. Dataset Preparation
@@ -37,6 +59,8 @@ def main():
         in_channels=config.in_channels,
         out_channels=config.out_channels
     )
+    model = model.to(device)
+    print(f"Model parameters are on: {next(model.parameters()).device}")
 
     # 3. Loss and Optimizer
     criterion = DiceBCELoss()

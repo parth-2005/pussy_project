@@ -31,7 +31,7 @@ class Config:
     # --- Training Pipeline ---
     checkpoint_dir: str = "checkpoints"
     log_dir: str = "logs"
-    device: str = "cuda" # Default to cuda, fallback to cpu in trainer
+    device: str = "cuda" # CUDA-only training; main.py fails fast if CUDA is unavailable
 
     # --- Evaluation ---
     val_interval: int = 1 # Validate every N epochs
