@@ -37,11 +37,13 @@ def main():
     print(f"Using device: {device}")
     pin_memory = device.type == "cuda"
     persistent_workers = config.num_workers > 0
+    data_root = config.processed_data_root if os.path.isdir(config.processed_data_root) else config.data_root
+    print(f"Using data root: {data_root}")
 
     # 1. Dataset Preparation
     # Note: In a real scenario, the data_root should contain the UPENN-GBM folders
     dataset = BrainMRIDataset(
-        root_dir=config.data_root,
+        root_dir=data_root,
         modalities=config.modalities,
         image_size=config.image_size,
         remove_empty_slices=config.remove_empty_slices

@@ -6,6 +6,7 @@ from typing import List, Tuple
 class Config:
     # --- Dataset Paths ---
     data_root: str = "data/UPENN-GBM"
+    processed_data_root: str = "data/UPENN_GBM_2D_Processed"
     train_split: float = 0.8
 
     # --- Image Parameters ---

@@ -24,14 +24,26 @@ class BrainMRIDataset(Dataset):
         self.image_size = image_size
         self.remove_empty_slices = remove_empty_slices
         self.transform = transform
+        self._is_preprocessed = self._detect_preprocessed_layout()
 
-        self.patient_dirs = sorted([d for d in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, d))])
-        self.slices = self._prepare_slices()
+        if self._is_preprocessed:
+            self.slice_pairs = self._prepare_preprocessed_slices()
+            self.patient_dirs = []
+            self.slices = self.slice_pairs
+        else:
+            self.patient_dirs = sorted([d for d in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, d))])
+            self.slices = self._prepare_slices()
 
-        if not self.patient_dirs:
+        if self._is_preprocessed and not self.slices:
+            raise RuntimeError(f"No preprocessed slice pairs found in dataset root: {root_dir}")
+
+        if not self._is_preprocessed and not self.patient_dirs:
             raise RuntimeError(f"No patient directories found in dataset root: {root_dir}")
 
         if not self.slices:
+            if self._is_preprocessed:
+                raise RuntimeError(f"No usable preprocessed slices were found in dataset root: {root_dir}")
+
             preview_dirs = ", ".join(self.patient_dirs[:5])
             raise RuntimeError(
                 "No usable training slices were found. "
@@ -40,6 +52,38 @@ class BrainMRIDataset(Dataset):
                 f"Root: {root_dir}. "
                 f"Patient folders found: {len(self.patient_dirs)} ({preview_dirs})."
             )
+
+    def _detect_preprocessed_layout(self) -> bool:
+        """
+        Detect whether the dataset root contains cached .npy slices instead of raw patient folders.
+        """
+        if not os.path.isdir(self.root_dir):
+            return False
+
+        for entry in os.listdir(self.root_dir):
+            if entry.endswith("_img.npy"):
+                return True
+        return False
+
+    def _prepare_preprocessed_slices(self) -> List[Tuple[str, int]]:
+        """
+        Collect paired image and mask slice files from a preprocessed directory.
+        """
+        image_files = sorted(
+            [
+                os.path.join(self.root_dir, name)
+                for name in os.listdir(self.root_dir)
+                if name.endswith("_img.npy")
+            ]
+        )
+
+        slice_pairs = []
+        for image_path in image_files:
+            mask_path = image_path.replace("_img.npy", "_mask.npy")
+            if os.path.exists(mask_path):
+                slice_pairs.append((image_path, mask_path))
+
+        return slice_pairs
 
     def _detect_modality_file(self, patient_dir: str, modality: str) -> Optional[str]:
         """
@@ -93,6 +137,18 @@ class BrainMRIDataset(Dataset):
         return len(self.slices)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        if self._is_preprocessed:
+            image_path, mask_path = self.slices[idx]
+            image_tensor = torch.from_numpy(np.load(image_path)).float()
+            mask_array = np.load(mask_path)
+            mask_array = np.where(mask_array > 0, 1.0, 0.0).astype(np.float32)
+            mask_tensor = torch.from_numpy(mask_array).float()
+
+            if self.transform:
+                image_tensor = self.transform(image_tensor)
+
+            return image_tensor, mask_tensor
+
         p_dir, slice_idx = self.slices[idx]
 
         # Load modalities
@@ -113,6 +169,7 @@ class BrainMRIDataset(Dataset):
         mask_path = self._detect_modality_file(p_dir, "mask")
         mask_vol = nib.load(mask_path).get_fdata()
         slice_mask = mask_vol[..., slice_idx]
+        slice_mask = np.where(slice_mask > 0, 1.0, 0.0).astype(np.float32)
         slice_mask = resize_mask(slice_mask, self.image_size)
 
         # Convert to tensors
