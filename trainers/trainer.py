@@ -29,6 +29,7 @@ class Trainer:
         self.optimizer = optimizer
         self.config = config
         self.device = device
+        self.best_val_dice = 0.0
 
         os.makedirs(config.checkpoint_dir, exist_ok=True)
         os.makedirs(config.log_dir, exist_ok=True)
@@ -95,6 +96,12 @@ class Trainer:
             history["val_dice"].append(val_res["dice"])
 
             print(f"Epoch {epoch}: Train Loss: {train_res['loss']:.4f}, Val Loss: {val_res['loss']:.4f}, Val Dice: {val_res['dice']:.4f}")
+
+            if val_res["dice"] > self.best_val_dice:
+                print(f"New best model: dice improved from {self.best_val_dice:.4f} to {val_res['dice']:.4f}")
+                self.best_val_dice = val_res["dice"]
+                best_path = os.path.join(self.config.checkpoint_dir, "best_model.pth")
+                torch.save(self.model.state_dict(), best_path)
 
             if epoch % self.config.val_interval == 0:
                 self.save_checkpoint(epoch, val_res["dice"])

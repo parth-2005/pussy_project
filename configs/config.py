@@ -18,7 +18,7 @@ class Config:
 
     # --- Model Parameters ---
     # Options: "unet", "attention_unet"
-    model_name: str = "unet"
+    model_name: str = "attention_unet"
     in_channels: int = 4 # Matches len(modalities)
     out_channels: int = 1 # Binary segmentation
 
@@ -28,7 +28,7 @@ class Config:
     epochs: int = 20
     optimizer: str = "adam"
     weight_decay: float = 1e-5
-    num_workers: int = 8
+    num_workers: int = 4
 
     # --- Training Pipeline ---
     checkpoint_dir: str = "checkpoints"

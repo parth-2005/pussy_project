@@ -1,6 +1,6 @@
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from configs.config import get_config
 from datasets.brain_dataset import BrainMRIDataset
 from models.factory import ModelFactory
@@ -37,22 +37,32 @@ def main():
     print(f"Using device: {device}")
     pin_memory = device.type == "cuda"
     persistent_workers = config.num_workers > 0
-    data_root = config.processed_data_root if os.path.isdir(config.processed_data_root) else config.data_root
-    print(f"Using data root: {data_root}")
+    train_dir = os.path.join(config.processed_data_root, "train")
+    val_dir = os.path.join(config.processed_data_root, "val")
+
+    if not os.path.isdir(train_dir) or not os.path.isdir(val_dir):
+        raise RuntimeError(
+            "Processed train/val folders were not found. Run preprocess.py first so the dataset is split at the source. "
+            f"Expected: {train_dir} and {val_dir}"
+        )
+
+    print(f"Loading Train dataset from: {train_dir}")
+    print(f"Loading Val dataset from: {val_dir}")
 
     # 1. Dataset Preparation
-    # Note: In a real scenario, the data_root should contain the UPENN-GBM folders
-    dataset = BrainMRIDataset(
-        root_dir=data_root,
+    train_dataset = BrainMRIDataset(
+        root_dir=train_dir,
         modalities=config.modalities,
         image_size=config.image_size,
         remove_empty_slices=config.remove_empty_slices
     )
 
-    # Split dataset
-    train_size = int(config.train_split * len(dataset))
-    val_size = len(dataset) - train_size
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+    val_dataset = BrainMRIDataset(
+        root_dir=val_dir,
+        modalities=config.modalities,
+        image_size=config.image_size,
+        remove_empty_slices=config.remove_empty_slices
+    )
 
     train_loader = DataLoader(
         train_dataset,
